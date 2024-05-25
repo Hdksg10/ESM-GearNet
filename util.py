@@ -82,7 +82,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", help="yaml configuration file", required=True)
     parser.add_argument("-s", "--seed", help="random seed for PyTorch", type=int, default=1024)
-
+    parser.add_argument("-o", "--output", help="output directory", default="output")
     args, unparsed = parser.parse_known_args()
     # get dynamic arguments defined in the config file
     vars = detect_variables(args.config)

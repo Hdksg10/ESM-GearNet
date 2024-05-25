@@ -24,6 +24,8 @@ from torchdrug.utils import comm
 from atom3d import datasets as da
 from atom3d.datasets import LMDBDataset
 
+import copy
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -347,4 +349,190 @@ class MSPDataset(data.ProteinDataset, Atom3DDataset):
             "#task: label",
         ]
         return "%s(\n  %s\n)" % (self.__class__.__name__, "\n  ".join(lines))
+
+@R.register("datasets.MutationDataset")
+class MutationDataset(data.ProteinDataset):
+
+    def __init__(self, transform=None, verbose=1, **kwargs):
+        path = "/root/GearNet/ESM-GearNet/mutant_dataset"
+        self.valid_ratio = 0.2
+        self.train_path = os.path.join(path, "train")
+        self.test_path = os.path.join(path, "test")
+        # self.files = []
+        self.data = []
+        # self.sequences = []
+        self.num_samples = [0, 0, 0] # train, valid, test
+        # self.proteins_test = []
+        pdb_file_name = "/root/GearNet/ESM-GearNet/mutant_dataset/wt.pdb"
+        self.proteinwt = data.Protein.from_pdb(pdb_file_name)
+        for root, dirs, files in os.walk(self.train_path):
+            for file in files:
+                if file.endswith(".fasta"):
+                    # self.files.append(os.path.join(root, file))
+                    file_name = file.split(".")[0]
+                    # pdb_file_name = os.path.join(root, file_name + ".pdb")
+                    
+                    with open(os.path.join(root, file), "r") as f:
+                        lines = f.readlines()
+                        mutaion = lines[0].strip().split(",")[1]
+                        sequence = lines[1].strip()
+                        activity, selectivity = lines[2].strip().split(";")
+                        activity = float(activity)
+                        selectivity = float(selectivity)
+                        protein = copy.deepcopy(self.proteinwt)
+                        # protein = self.apply_mutations_to_graph(protein, mutaion)
+                        protein.mutation = mutaion
+                        protein.activity = activity
+                        protein.selectivity = selectivity
+                        protein_m = data.Protein.from_sequence(sequence)
+                        protein.sequence = protein_m
+                    self.data.append(protein)
+                    self.num_samples[0] += 1
+        
+        # random split
+        random.shuffle(self.data)
+        num_valid = int(self.valid_ratio * len(self.data))
+        self.num_samples[0] = len(self.data) - num_valid
+        self.num_samples[1] = num_valid
+        
+        for root, dirs, files in os.walk(self.test_path):
+            for file in files:
+                if file.endswith(".fasta"):
+                    # self.files.append(os.path.join(root, file))
+                    file_name = file.split(".")[0]
+                    # pdb_file_name = os.path.join(root, file_name + ".pdb")
+                    
+                    with open(os.path.join(root, file), "r") as f:
+                        lines = f.readlines()
+                        mutaion = lines[0].strip().split(",")[1]
+                        sequence = lines[1].strip()
+                        activity, selectivity = lines[2].strip().split(";")
+                        activity = float(activity)
+                        selectivity = float(selectivity)
+                        protein = copy.deepcopy(self.proteinwt)
+                        protein.mutation = mutaion
+                        protein.sequence = sequence
+                        protein.activity = activity
+                        protein.selectivity = selectivity
+                        protein_m = data.Protein.from_sequence(sequence)
+                        protein.sequence = protein_m
+                    self.data.append(protein)  
+                    self.num_samples[2] += 1
+        pass
+    
+    def get_item(self, index):
+        protein = self.data[index]
+        selectivity = protein.selectivity
+        activity = protein.activity
+        item = {"graph": protein,
+                "graph_m": protein.sequence, 
+                "mutation": protein.mutation,
+                "activity": activity,
+                "selectivity": selectivity}
+        return item
+    
+    def apply_mutations_to_protein(self, protein, mutations_str):
+            
+            if mutations_str == "WT" or not mutations_str:
+                # 如果没有突变（即野生型），直接返回原始序列
+                return protein
+            mutations = mutations_str.split(';')
+            sequence = list(sequence)  # 转换成列表便于修改
+            for mut in mutations:
+                if mut:  # 确保突变不为空
+                    original_aa, position, new_aa = mut[0], int(mut[1:-1]) - 1, mut[-1]
+                    assert sequence[position] == original_aa, f"Mutation at position {position+1} does not match the original amino acid."
+                    sequence[position] = new_aa
+            return ''.join(sequence)    
+        
+    def apply_mutations_to_graph(self, graph, mutations_str):
+        if mutations_str == "WT" or not mutations_str:
+            # 如果没有突变（即野生型），直接返回原始序列
+            return graph
+        mutations = mutations_str.split(';')
+        residue_mask = []
+        residue_type = graph.residue_type
+        # print(residue_type)
+        # print(mutations)
+        for mut in mutations:
+            if mut:
+                original_aa, position, new_aa = mut[0], int(mut[1:-1]) - 1, mut[-1]
+                original_aa_id = data.Protein.residue_symbol2id[original_aa]
+                assert residue_type[position] == original_aa_id, f"Mutation at position {position+1} does not match the original amino acid."
+                residue_mask.append(position)
+        residue_index = [i for i in range(len(residue_type)) if i not in residue_mask]     
+        graph = graph.subresidue(residue_index)
+        return graph
+    
+    @property
+    def tasks(self):
+        """List of tasks."""
+        return ["activity", "selectivity"]
+    
+    def __repr__(self):
+        lines = [
+            "#sample: %d" % len(self),
+            "#task: activity, selectivity",
+        ]
+        return "%s(\n  %s\n)" % (self.__class__.__name__, "\n  ".join(lines))
+    
+    def split(self):
+        offset = 0
+        splits = []
+        for num_sample in self.num_samples:
+            split = torch_data.Subset(self, range(offset, offset + num_sample))
+            splits.append(split)
+            offset += num_sample
+        return splits
+    
+@R.register("datasets.ActivityDataset")
+class ActivityDataset(MutationDataset):
+    def __init__(self, transform=None, verbose=1, **kwargs): 
+        super().__init__(transform=transform, verbose=verbose, **kwargs)
+    
+    def get_item(self, index):
+        item = super().get_item(index)
+        item.pop("selectivity")
+        return item
+    
+    @property
+    def tasks(self):
+        """List of tasks."""
+        return ["activity"]
+
+    def __repr__(self):
+        lines = [
+            "#sample: %d" % len(self),
+            "#task: activity",
+        ]
+        return "%s(\n  %s\n)" % (self.__class__.__name__, "\n  ".join(lines))
+
+@R.register("datasets.SelectivityDataset")
+class SelectivityDataset(MutationDataset):
+    def __init__(self, transform=None, verbose=1, **kwargs): 
+        super().__init__(transform=transform, verbose=verbose, **kwargs)
+    
+    def get_item(self, index):
+        item = super().get_item(index)
+        item.pop("activity")
+        return item
+    
+    @property
+    def tasks(self):
+        """List of tasks."""
+        return ["selectivity"]
+
+    def __repr__(self):
+        lines = [
+            "#sample: %d" % len(self),
+            "#task: selectivity",
+        ]
+        return "%s(\n  %s\n)" % (self.__class__.__name__, "\n  ".join(lines))
+
+if __name__ == "__main__":
+    md = MutationDataset("/root/GearNet/ESM-GearNet/mutant_dataset", splits="train")
+    pt1 = md.get_item(2)
+    graph = pt1["graph"]
+    mutation = graph.mutation
+    
     

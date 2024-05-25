@@ -29,9 +29,9 @@ class FusionNetwork(nn.Module, core.Configurable):
         else:
             raise ValueError("Not support fusion scheme %s" % fusion)
 
-    def forward(self, graph, input, all_loss=None, metric=None):
+    def forward(self, graph, graph_m, input, all_loss=None, metric=None):
         # Sequence model
-        output1 = self.sequence_model(graph, input, all_loss, metric)
+        output1 = self.sequence_model(graph_m, input, all_loss, metric)
         node_output1 = output1.get("node_feature", output1.get("residue_feature"))
         # Structure model
         if self.fusion == "series":
