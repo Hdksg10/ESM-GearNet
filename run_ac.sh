@@ -1,0 +1,1 @@
+python -m torch.distributed.launch --nproc_per_node=1 script/downstream.py -c config/MU/esm_gearnet_ac.yaml -o "/root/GearNet/ESM-GearNet/proteinmul/ac.csv" --ckpt /root/GearNet/siamdiff_esm_gearnet.pth
