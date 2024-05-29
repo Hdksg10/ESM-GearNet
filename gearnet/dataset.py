@@ -354,7 +354,7 @@ class MSPDataset(data.ProteinDataset, Atom3DDataset):
 class MutationDataset(data.ProteinDataset):
 
     def __init__(self, transform=None, verbose=1, **kwargs):
-        path = "/root/GearNet/ESM-GearNet/mutant_dataset"
+        path = "/ESM-GearNet/mutant_dataset"
         self.valid_ratio = 0.2
         self.train_path = os.path.join(path, "train")
         self.test_path = os.path.join(path, "test")
@@ -363,7 +363,7 @@ class MutationDataset(data.ProteinDataset):
         # self.sequences = []
         self.num_samples = [0, 0, 0] # train, valid, test
         # self.proteins_test = []
-        pdb_file_name = "/root/GearNet/ESM-GearNet/mutant_dataset/wt.pdb"
+        pdb_file_name = "/ESM-GearNet/mutant_dataset/wt.pdb"
         self.proteinwt = data.Protein.from_pdb(pdb_file_name)
         for root, dirs, files in os.walk(self.train_path):
             for file in files:
