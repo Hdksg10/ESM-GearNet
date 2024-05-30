@@ -1,5 +1,5 @@
 output_dir: ~/scratch/aaai24_outputs
-checkpoint: /model_epoch_6.pth
+checkpoint: /sel_model_epoch_6.pth
 dataset:
   class: SelectivityDataset
   path: ~/scratch/protein-datasets/
