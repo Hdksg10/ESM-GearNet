@@ -1,5 +1,5 @@
 output_dir: ~/scratch/aaai24_outputs
-checkpoint: /ac_model_epoch_6.pth
+checkpoint: /ac_model_epoch.pth
 
 dataset:
   class: ActivityDataset
