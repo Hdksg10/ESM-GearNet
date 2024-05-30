@@ -1,7 +1,8 @@
 output_dir: ~/scratch/aaai24_outputs
+checkpoint: /root/scratch/aaai24_outputs/PropertyPredictionM/ActivityDataset/FusionNetwork/2024-05-29-13-56-46/model_epoch_6.pth
 
 dataset:
-  class: SelectivityDataset
+  class: ActivityDataset
   path: ~/scratch/protein-datasets/
   atom_feature: null
   residue_feature: default
@@ -56,7 +57,7 @@ engine:
 
 model_checkpoint: {{ ckpt }}
 sequence_model_lr_ratio: 0.1
-metric: spearmanr [selectivity]
+metric: spearmanr [activity]
 
-train:
-  num_epoch: 6
+# train:
+#   num_epoch: 10

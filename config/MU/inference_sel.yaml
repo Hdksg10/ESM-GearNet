@@ -1,5 +1,5 @@
 output_dir: ~/scratch/aaai24_outputs
-
+checkpoint: /root/scratch/aaai24_outputs/PropertyPredictionM/ActivityDataset/FusionNetwork/2024-05-29-13-56-46/model_epoch_6.pth
 dataset:
   class: SelectivityDataset
   path: ~/scratch/protein-datasets/
@@ -58,5 +58,5 @@ model_checkpoint: {{ ckpt }}
 sequence_model_lr_ratio: 0.1
 metric: spearmanr [selectivity]
 
-train:
-  num_epoch: 6
+# train:
+#   num_epoch: 6

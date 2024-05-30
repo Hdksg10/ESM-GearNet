@@ -6,7 +6,7 @@ import random
 import logging
 import warnings
 from tqdm import tqdm
-
+import csv
 import numpy as np
 import pandas as pd
 import scipy
@@ -354,70 +354,110 @@ class MSPDataset(data.ProteinDataset, Atom3DDataset):
 class MutationDataset(data.ProteinDataset):
 
     def __init__(self, transform=None, verbose=1, **kwargs):
-        path = "/ESM-GearNet/mutant_dataset"
+        path = "/root/GearNet/ESM-GearNet/proteinmul"
         self.valid_ratio = 0.2
         self.train_path = os.path.join(path, "train")
         self.test_path = os.path.join(path, "test")
+        self.train_csv_path = os.path.join(path, "train.csv")
+        self.test_csv_path = os.path.join(path, "test.csv")
         # self.files = []
         self.data = []
         # self.sequences = []
         self.num_samples = [0, 0, 0] # train, valid, test
         # self.proteins_test = []
-        pdb_file_name = "/ESM-GearNet/mutant_dataset/wt.pdb"
+        pdb_file_name = "/root/GearNet/ESM-GearNet/mutant_dataset/wt.pdb"
         self.proteinwt = data.Protein.from_pdb(pdb_file_name)
-        for root, dirs, files in os.walk(self.train_path):
-            for file in files:
-                if file.endswith(".fasta"):
-                    # self.files.append(os.path.join(root, file))
-                    file_name = file.split(".")[0]
-                    # pdb_file_name = os.path.join(root, file_name + ".pdb")
+        # for root, dirs, files in os.walk(self.train_path):
+        #     for file in files:
+        #         if file.endswith(".fasta"):
+        #             # self.files.append(os.path.join(root, file))
+        #             file_name = file.split(".")[0]
+        #             # pdb_file_name = os.path.join(root, file_name + ".pdb")
                     
-                    with open(os.path.join(root, file), "r") as f:
-                        lines = f.readlines()
-                        mutaion = lines[0].strip().split(",")[1]
-                        sequence = lines[1].strip()
-                        activity, selectivity = lines[2].strip().split(";")
-                        activity = float(activity)
-                        selectivity = float(selectivity)
-                        protein = copy.deepcopy(self.proteinwt)
-                        # protein = self.apply_mutations_to_graph(protein, mutaion)
-                        protein.mutation = mutaion
-                        protein.activity = activity
-                        protein.selectivity = selectivity
-                        protein_m = data.Protein.from_sequence(sequence)
-                        protein.sequence = protein_m
-                    self.data.append(protein)
-                    self.num_samples[0] += 1
-        
+        #             with open(os.path.join(root, file), "r") as f:
+        #                 lines = f.readlines()
+        #                 mutaion = lines[0].strip().split(",")[1]
+        #                 sequence = lines[1].strip()
+        #                 activity, selectivity = lines[2].strip().split(";")
+        #                 activity = float(activity)
+        #                 selectivity = float(selectivity)
+        #                 protein = copy.deepcopy(self.proteinwt)
+        #                 # protein = self.apply_mutations_to_graph(protein, mutaion)
+        #                 protein.mutation = mutaion
+        #                 protein.activity = activity
+        #                 protein.selectivity = selectivity
+        #                 protein_m = data.Protein.from_sequence(sequence)
+        #                 protein.sequence = protein_m
+        #             self.data.append(protein)
+        #             self.num_samples[0] += 1
+        with open(self.train_csv_path, mode='r', encoding='utf-8') as train_csv:
+            csv_reader = csv.reader(train_csv)
+            next(csv_reader)
+            for row in csv_reader:
+                mutaion = row[0]
+                activity = row[1]
+                selectivity = row[2]
+                activity = float(activity)
+                selectivity = float(selectivity)
+                sequence = self.apply_mutations_to_sequence(mutaion)
+                protein = copy.deepcopy(self.proteinwt)
+                # protein = self.apply_mutations_to_graph(protein, mutaion)
+                protein.mutation = mutaion
+                protein.activity = activity
+                protein.selectivity = selectivity
+                protein_m = data.Protein.from_sequence(sequence)
+                protein.sequence = protein_m
+                self.data.append(protein)
+                self.num_samples[0] += 1
+                # print(protein)
+                # print(protein_m)
+                # print(protein.activity)
+                # print(protein.selectivity)
         # random split
         random.shuffle(self.data)
         num_valid = int(self.valid_ratio * len(self.data))
         self.num_samples[0] = len(self.data) - num_valid
         self.num_samples[1] = num_valid
-        
-        for root, dirs, files in os.walk(self.test_path):
-            for file in files:
-                if file.endswith(".fasta"):
-                    # self.files.append(os.path.join(root, file))
-                    file_name = file.split(".")[0]
-                    # pdb_file_name = os.path.join(root, file_name + ".pdb")
+        with open(self.test_csv_path, mode='r', encoding='utf-8') as test_csv:
+            csv_reader = csv.reader(test_csv)
+            next(csv_reader)
+            for row in csv_reader:
+                mutaion = row[0]
+                activity = 0.0
+                selectivity = 0.0
+                sequence = self.apply_mutations_to_sequence(mutaion)
+                protein = copy.deepcopy(self.proteinwt)
+                # protein = self.apply_mutations_to_graph(protein, mutaion)
+                protein.mutation = mutaion
+                protein.activity = activity
+                protein.selectivity = selectivity
+                protein_m = data.Protein.from_sequence(sequence)
+                protein.sequence = protein_m
+                self.data.append(protein)
+                self.num_samples[2] += 1
+        # for root, dirs, files in os.walk(self.test_path):
+        #     for file in files:
+        #         if file.endswith(".fasta"):
+        #             # self.files.append(os.path.join(root, file))
+        #             file_name = file.split(".")[0]
+        #             # pdb_file_name = os.path.join(root, file_name + ".pdb")
                     
-                    with open(os.path.join(root, file), "r") as f:
-                        lines = f.readlines()
-                        mutaion = lines[0].strip().split(",")[1]
-                        sequence = lines[1].strip()
-                        activity, selectivity = lines[2].strip().split(";")
-                        activity = float(activity)
-                        selectivity = float(selectivity)
-                        protein = copy.deepcopy(self.proteinwt)
-                        protein.mutation = mutaion
-                        protein.sequence = sequence
-                        protein.activity = activity
-                        protein.selectivity = selectivity
-                        protein_m = data.Protein.from_sequence(sequence)
-                        protein.sequence = protein_m
-                    self.data.append(protein)  
-                    self.num_samples[2] += 1
+        #             with open(os.path.join(root, file), "r") as f:
+        #                 lines = f.readlines()
+        #                 mutaion = lines[0].strip().split(",")[1]
+        #                 sequence = lines[1].strip()
+        #                 activity, selectivity = lines[2].strip().split(";")
+        #                 activity = float(activity)
+        #                 selectivity = float(selectivity)
+        #                 protein = copy.deepcopy(self.proteinwt)
+        #                 protein.mutation = mutaion
+        #                 protein.sequence = sequence
+        #                 protein.activity = activity
+        #                 protein.selectivity = selectivity
+        #                 protein_m = data.Protein.from_sequence(sequence)
+        #                 protein.sequence = protein_m
+        #             self.data.append(protein)  
+        #             self.num_samples[2] += 1
         pass
     
     def get_item(self, index):
@@ -430,7 +470,19 @@ class MutationDataset(data.ProteinDataset):
                 "activity": activity,
                 "selectivity": selectivity}
         return item
-    
+    def apply_mutations_to_sequence(self, mutations_str):
+        sequence = "MRRESLLVSVCKGLRVHVERVGQDPGRSTVMLVNGAMATTASFARTCKCLAEHFNVVLFDLPFAGQSRQHNPQRGLITKDDEVEILLALIERFEVNHLVSASWGGISTLLALSRNPRGIRSSVVMAFAPGLNQAMLDYVGRAQALIELDDKSAIGHLLNETVGKYLPQRLKASNHQHMASLATGEYEQARFHIDQVLALNDRGYLACLERIQSHVHFINGSWDEYTTAEDARQFRDYLPHCSFSRVEGTGHFLDLESKLAAVRVHRALLEHLLKQPEPQRAERAAGFHEMAIGYA"
+        if mutations_str == "WT" or not mutations_str:
+            # 如果没有突变（即野生型），直接返回原始序列
+            return sequence
+        mutations = mutations_str.split(';')
+        sequence = list(sequence)  # 转换成列表便于修改
+        for mut in mutations:
+            if mut:  # 确保突变不为空
+                original_aa, position, new_aa = mut[0], int(mut[1:-1]) - 1, mut[-1]
+                assert sequence[position] == original_aa, f"Mutation at position {position+1} does not match the original amino acid."
+                sequence[position] = new_aa
+        return ''.join(sequence)
     def apply_mutations_to_protein(self, protein, mutations_str):
             
             if mutations_str == "WT" or not mutations_str:
@@ -530,9 +582,11 @@ class SelectivityDataset(MutationDataset):
         return "%s(\n  %s\n)" % (self.__class__.__name__, "\n  ".join(lines))
 
 if __name__ == "__main__":
-    md = MutationDataset("/root/GearNet/ESM-GearNet/mutant_dataset", splits="train")
+    md = MutationDataset()
     pt1 = md.get_item(2)
+    print(pt1)
     graph = pt1["graph"]
     mutation = graph.mutation
+    print(mutation)
     
     

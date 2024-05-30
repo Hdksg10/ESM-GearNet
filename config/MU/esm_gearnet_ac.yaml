@@ -1,5 +1,4 @@
 output_dir: ~/scratch/aaai24_outputs
-
 dataset:
   class: ActivityDataset
   path: ~/scratch/protein-datasets/
@@ -16,10 +15,10 @@ task:
     sequence_model:
       class: ESM
       path: ~/scratch/protein-model-weights/esm-model-weights/
-      model: ESM-2-3B
+      model: ESM-2-650M
     structure_model:
       class: GearNet
-      input_dim: 2560
+      input_dim: 1280
       hidden_dims: [512, 512, 512, 512, 512, 512]
       batch_norm: True
       concat_hidden: True
@@ -59,4 +58,4 @@ sequence_model_lr_ratio: 0.1
 metric: spearmanr [activity]
 
 train:
-  num_epoch: 6
+  num_epoch: 10
